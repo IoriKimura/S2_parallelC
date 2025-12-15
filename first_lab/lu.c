@@ -69,7 +69,6 @@ void kernel_lu_parallel(int n, double* A) {
     // Внешний цикл по i должен оставаться последовательным из-за зависимостей данных
     for (int i = 0; i < n; i++) {
         // Вычисление нижней треугольной матрицы L (j < i)
-        #pragma omp parallel for
         for (int j = 0; j < i; j++) {
             for (int k = 0; k < j; k++) {
                 A[i * n + j] -= A[i * n + k] * A[k * n + j];
@@ -86,25 +85,30 @@ void kernel_lu_parallel(int n, double* A) {
     }
 }
 
-// Сравнение результатов двух матриц
+// Сравнение результатов двух матриц (процентная разница)
 double compare_results(int n, double* A_seq, double* A_par) {
-    double max_diff = 0;
+    double max_rel_diff = 0;
+    
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
             double val_seq = A_seq[i * n + j];
             double val_par = A_par[i * n + j];
+            
+            // Вычисляем относительную разницу в процентах
             if (fabs(val_seq) > 1e-10) {
-                double diff = fabs(val_par / val_seq - 1);
-                if (diff > max_diff)
-                    max_diff = diff;
+                double rel_diff = fabs(val_par / val_seq - 1);
+                if (rel_diff > max_rel_diff)
+                    max_rel_diff = rel_diff;
             } else if (fabs(val_par) > 1e-10) {
-                double diff = fabs(val_par);
-                if (diff > max_diff)
-                    max_diff = diff;
+                if (1.0 > max_rel_diff)
+                    max_rel_diff = 1.0;
             }
         }
     }
-    return max_diff;
+    
+    printf("Разница между результатами: %.6f%%\n", max_rel_diff * 100);
+    
+    return max_rel_diff;
 }
 
 int main(int argc, char** argv) {
@@ -169,7 +173,7 @@ int main(int argc, char** argv) {
     // Сравнение результатов
     printf("Сравнение результатов...\n");
     double max_diff = compare_results(n, A_seq, A_par);
-    printf("Максимальная разница: %lf процентов\n\n", max_diff * 100);
+    printf("\n");
     
     // Сравнение времени выполнения
     printf("Сравнение производительности:\n");
